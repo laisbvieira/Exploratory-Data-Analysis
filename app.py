@@ -8,13 +8,17 @@ from ttkthemes import ThemedStyle
 import numpy as np
 
 
-class DadosSinaisVitais:
+class Dados:
     def __init__(self, path):
         self.dados = self.ler_dados(path)
-        if self.dados:
+        self.pacotes = self.dividir_em_pacotes(24)
+
+        if self.dados and self.pacotes:
             self.preprocessar_dados()
         else:
-            print("Erro: Nenhum dado encontrado no arquivo.")
+            print(
+                "Erro: Nenhum dado encontrado no arquivo ou número de amostras não é múltiplo de 24."
+            )
 
     def ler_dados(self, path):
         try:
@@ -74,24 +78,15 @@ class DadosSinaisVitais:
         ]
         return pd.DataFrame(self.dados, columns=colunas)
 
-
-class EstatisticasSinaisVitais:
-    def __init__(self, dados):
-        self.dados = dados
-
-    def calcular_estatisticas(self, chave):
-        valores = self.dados[chave].astype(float)
-        media = np.mean(valores)
-        maximo = np.max(valores)
-        minimo = np.min(valores)
-        return media, maximo, minimo
-
-    def gerar_histograma(self, chave):
-        valores = self.dados[chave].astype(float)
-        plt.hist(valores)
-        plt.xlabel(chave)
-        plt.ylabel("FREQUENCIA")
-        plt.show()
+    def dividir_em_pacotes(self, tamanho_pacote):
+        if len(self.dados) % tamanho_pacote != 0:
+            print("Erro: O número de amostras não é um múltiplo de 24.")
+            return None
+        else:
+            return [
+                self.dados[i : i + tamanho_pacote]
+                for i in range(0, len(self.dados), tamanho_pacote)
+            ]
 
 
 class VisualizadorSinaisVitais:
@@ -140,14 +135,11 @@ class VisualizadorSinaisVitais:
         self.progress_bar["value"] = progresso
 
     def fechar_janela(self):
-        chave = self.chaves[self.indice]
-        valores = self.dados[chave].astype(float)
         self.root.destroy()
         sys.exit()
 
 
 def imprimir_dados(dados):
-    tamanho_amostra = len(dados)
     for chave in ["BATIMENTO CARDIACO", "PRESSAO ARTERIAL", "TEMPERATURA CORPORAL"]:
         valores = dados[chave].astype(float)
         media = np.mean(valores)
@@ -157,7 +149,6 @@ def imprimir_dados(dados):
         print("\n\n*************************************************")
         print(f"{chave}")
         print("*************************************************")
-        print(f"Tamanho da amostra: {tamanho_amostra}")
         print(f"Média: {media:.2f}")
         print(f"Máximo: {maximo:.2f}")
         print(f"Mínimo: {minimo:.2f}")
@@ -165,15 +156,16 @@ def imprimir_dados(dados):
 
 def main():
     path = "dados.txt"
-    dados_sinais_vitais = DadosSinaisVitais(path)
-    if dados_sinais_vitais.dados:
-        dataframe = dados_sinais_vitais.criar_dataframe()
+    arquivo = Dados(path)
+    if arquivo.dados:
+        dataframe = arquivo.criar_dataframe()
+        correlacao = dataframe.corr(method="pearson")
 
-        correlacao = dataframe.corr()
         print(
             "\n\n**************************************************************************************************"
         )
         print("CORRELAÇÃO ENTRE OS PARÂMETROS")
+        print("NUMERO DE AMOSTRAS/CAMPOS: ", dataframe.shape)
         print(
             "**************************************************************************************************"
         )
